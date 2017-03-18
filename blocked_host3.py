@@ -100,15 +100,23 @@ class SimpleSwitch13(app_manager.RyuApp):
 
         # Blocked host3 by setting output port to in_port
         if (src == "00:00:00:00:00:03")or(dst == "00:00:00:00:00:03"):
-            actions = [parser.OFPActionOutput(in_port)]
-        else:
-            actions = [parser.OFPActionOutput(out_port)]
+            instruction = [parser.OFPInstructionActions(ofproto.OFPIT_CLEAR_ACTIONS, []) ]
+        actions = [parser.OFPActionOutput(out_port)]
 
 
         # install a flow to avoid packet_in next time
         if out_port != ofproto.OFPP_FLOOD:
             if (src == "00:00:00:00:00:03")or(dst == "00:00:00:00:00:03"):
                 self.logger.info("Blocked host 3's entry adding");
+                match = parser.OFPMatch(eth_src = '00:00:00:00:00:03')
+                blockflow = parser.OFPFlowMod(datapath,
+                                              priority = 1,
+                                              command = ofproto.OFPFC_ADD,
+                                              match = match,
+                                              instructions = instruction
+                                              )
+                self.logger.info("Block entry: %s" % str(blockflow));
+                datapath.send_msg(blockflow)
             else:
                 match = parser.OFPMatch(in_port=in_port, eth_dst=dst)
                 # verify if we have a valid buffer_id, if yes avoid to send both
