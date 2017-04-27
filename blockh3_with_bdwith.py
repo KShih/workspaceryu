@@ -73,9 +73,8 @@ class SimpleSwitch13(app_manager.RyuApp):
         while True:
             for dp in self.datapaths.values():
                 self._request_stats(dp)
-            
-	    global monitor_time
-	    hub.sleep(monitor_time)
+            global monitor_time
+            hub.sleep(monitor_time)
 # monitor每過monitor time秒，便更新一次，此monitor_time值設定在code最前面，以global方式宣告
 	
     def _request_stats(self, datapath):
@@ -111,12 +110,8 @@ class SimpleSwitch13(app_manager.RyuApp):
     
     @set_ev_cls(ofp_event.EventOFPPortStatsReply, MAIN_DISPATCHER)
     def _port_stats_reply_handler(self, ev):
-       
-
-	body = ev.msg.body
-       	
- 	
-	global monitor_time	
+        body = ev.msg.body
+        global monitor_time	
         self.logger.info('datapath         port     '
                          'rx-pkts  rx-bytes rx-error '
                          'tx-pkts  tx-bytes tx-error tx-flow/time')
@@ -124,20 +119,19 @@ class SimpleSwitch13(app_manager.RyuApp):
                          '-------- -------- -------- '
                          '-------- -------- -------- -----------')
         for stat in sorted(body, key=attrgetter('port_no')):
-	    num = 0
-	    if stat.port_no <= 2000:
-		num = stat.port_no
-	    self.change_now(num,stat.tx_bytes)
-	    self.change_flow(num,now[num]-last[num])
-	    self.change_flow(num,flow[num]/monitor_time)
-	    self.change_last(num,now[num])
+            num = 0
+            if stat.port_no <= 2000:
+                num = stat.port_no
+            self.change_now(num,stat.tx_bytes)
+            self.change_flow(num,now[num]-last[num])
+            self.change_flow(num,flow[num]/monitor_time)
+            self.change_last(num,now[num])
 	    #now[num] = stat.tx_bytes	    
 	    #flow[num] = now[num] - last[num]
 	    #flow[num] = flow[num] / time
 	    #last[num] = now[num]
-        
-        #flow[num]即為該port之流量時變量
-	    self.logger.info('%016x %8x %8d %8d %8d %8d %8d %8d %8d', 
+            #flow[num]即為該port之流量時變量
+            self.logger.info('%016x %8x %8d %8d %8d %8d %8d %8d %8d', 
                              ev.msg.datapath.id, stat.port_no,
                              stat.rx_packets, stat.rx_bytes, stat.rx_errors,
                              stat.tx_packets, stat.tx_bytes, stat.tx_errors, flow[num] )
@@ -162,14 +156,14 @@ class SimpleSwitch13(app_manager.RyuApp):
                 
     
     def change_now(self,num1,num2):
-	global now
-	now[num1] = num2
+        global now
+        now[num1] = num2
     def change_last(self,num1,num2):
-	global last
-	last[num1] = num2
+        global last
+        last[num1] = num2
     def change_flow(self,num1,num2):
-	global flow
-	flow[num1] = num2
+        global flow
+        flow[num1] = num2
         #============================monitor============================#
 
         #============================SWITCH============================#
