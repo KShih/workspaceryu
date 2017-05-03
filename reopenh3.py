@@ -45,8 +45,9 @@ blocked_flag = False
 
 last = [0 for n in range(0,30)]
 flow = [0 for n in range(0,30)]
-now  = [0 for r in range(0,30)]
-
+now  = [0 for n in range(0,30)]
+blocked_timer = [0 for n in range(0,30)]
+blocked_flag = [False for n in range(0,30)]
 class SimpleSwitch13(app_manager.RyuApp):
     
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -139,7 +140,7 @@ class SimpleSwitch13(app_manager.RyuApp):
                              stat.rx_packets, stat.rx_bytes, stat.rx_errors,
                              stat.tx_packets, stat.tx_bytes, stat.tx_errors, flow[num] )
             if (stat.port_no == 3) and (flow[stat.port_no] >= 5000):
-                self.blocked_timer_add()
+                self.set_blocked_flag(num,True)
                 instruction = [parser.OFPInstructionActions(ofproto.OFPIT_CLEAR_ACTIONS, []) ]
                 self.logger.info("Blocked host 3's entry adding")
                 match = parser.OFPMatch(eth_src = '00:00:00:00:00:03')
@@ -151,12 +152,13 @@ class SimpleSwitch13(app_manager.RyuApp):
                                               )
                 self.logger.info("Block entry: %s" % str(blockflow));
                 datapath.send_msg(blockflow)
+            
 
-            if(blocked_flag):
-                self.blocked_timer_add()
-                self.logger.info("Block Timer: %d" % (blocked_timer));
-            if(blocked_timer == 50): #Re-Open the blocked host
-                self.blocked_init()
+            if(blocked_flag[num]):
+                self.logger.info("Host%d's Block Timer: %d" % (num,blocked_timer[num]));
+                self.blocked_timer_add(num)
+            if(blocked_timer[num] == 50+monitor_time): #Re-Open the blocked host
+                self.blocked_init(num)
                 empty_match = parser.OFPMatch(eth_src = '00:00:00:00:00:03')
                 instructions = []
                 flow_mod = self.del_flow(datapath, empty_match,instructions)
@@ -171,17 +173,20 @@ class SimpleSwitch13(app_manager.RyuApp):
     def change_flow(self,num1,num2):
         global flow
         flow[num1] = num2
-    def blocked_init(self):
+    def blocked_init(self,index):
         global blocked_timer
         global blocked_flag
-        blocked_timer = 0
-        blocked_flag = False
-    def blocked_timer_add(self):
+        blocked_timer[index] = 0
+        blocked_flag[index] = False
+    def blocked_timer_add(self,index):
         global blocked_timer
         global blocked_flag
-        blocked_flag = True
-        blocked_timer += 1
-
+        global monitor_time
+        blocked_flag[index] = True
+        blocked_timer[index] += monitor_time
+    def set_blocked_flag(self,index,boolean):
+        global blocked_flag
+        blocked_flag[index] = boolean
         #============================monitor============================#
 
         #============================SWITCH============================#
