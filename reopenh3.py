@@ -25,7 +25,10 @@
 #   以限定流量大小，取代原有的直接Block住
 # Note:
 #  新增del_flow()這個函式去實踐刪除Entry的動作
-
+#-----
+# 07.02更新：加入物件導向編程, 新增class Host.py
+#
+import Host
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER, DEAD_DISPATCHER
@@ -38,16 +41,14 @@ from ryu.lib import hub
 from ryu.lib.packet import ether_types
 import os
 
-monitor_time = 5
-blocked_timer = 0
-blocked_flag = False
+monitor_time = 1
 #monitor_time為單位時間，每過 X 秒，monitor就更新一次，並統計每個port在該秒跟五秒前的流量差異
 
-last = [0 for n in range(0,30)]
-flow = [0 for n in range(0,30)]
-now  = [0 for n in range(0,30)]
-blocked_timer = [0 for n in range(0,30)]
-blocked_flag = [False for n in range(0,30)]
+host = [0 for n in range(0,100)]
+
+for i in range (0,100):
+    host[i] = Host.port_information(i)
+
 class SimpleSwitch13(app_manager.RyuApp):
     
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -101,8 +102,8 @@ class SimpleSwitch13(app_manager.RyuApp):
                          '-------- ----------------- '
                          '-------- -------- --------')
         for stat in sorted([flow for flow in body if flow.priority == 1],
-                           key=lambda flow: (flow.match['in_port'],
-                                             flow.match['eth_dst'])):
+                            key=lambda flow:(flow.match['in_port'],
+                                        flow.match['eth_dst'])):
             self.logger.info('%016x %8x %17s %8x %8d %8d',
                              ev.msg.datapath.id,
                              stat.match['in_port'], stat.match['eth_dst'],
@@ -118,8 +119,6 @@ class SimpleSwitch13(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         ofproto = datapath.ofproto
         global monitor_time
-        global blocked_timer
-        global blocked_flag
         self.logger.info('datapath         port     '
                          'rx-pkts  rx-bytes rx-error '
                          'tx-pkts  tx-bytes tx-error tx-flow/time')
@@ -128,19 +127,22 @@ class SimpleSwitch13(app_manager.RyuApp):
                          '-------- -------- -------- -----------')
         for stat in sorted(body, key=attrgetter('port_no')):
             num = 0
-            if stat.port_no <= 2000:
+            if stat.port_no <= 10:
                 num = stat.port_no
-            self.change_now(num,stat.tx_bytes)
-            self.change_flow(num,now[num]-last[num])
-            self.change_flow(num,flow[num]/monitor_time)
-            self.change_last(num,now[num])
-
+            host[num].set_now(stat.tx_bytes)
+            host[num].set_flow(host[num].now - host[num].last)
+            host[num].set_flow(host[num].flow / monitor_time)
+            host[num].set_last(host[num].now)
+            #self.change_now(num,stat.tx_bytes)
+            #self.change_flow(num,now[num]-last[num])
+            #self.change_flow(num,flow[num]/monitor_time)
+            #self.change_last(num,now[num])
             self.logger.info('%016x %8x %8d %8d %8d %8d %8d %8d %8d', 
                              ev.msg.datapath.id, stat.port_no,
                              stat.rx_packets, stat.rx_bytes, stat.rx_errors,
-                             stat.tx_packets, stat.tx_bytes, stat.tx_errors, flow[num] )
-            if (stat.port_no == 3) and (flow[stat.port_no] >= 5000):
-                self.set_blocked_flag(num,True)
+                             stat.tx_packets, stat.tx_bytes, stat.tx_errors, host[num].flow )
+            if (stat.port_no == 3) and (host[num].flow >= 5000):
+                host[num].set_blocked_flag(True)
                 instruction = [parser.OFPInstructionActions(ofproto.OFPIT_CLEAR_ACTIONS, []) ]
                 self.logger.info("Blocked host 3's entry adding")
                 match = parser.OFPMatch(eth_src = '00:00:00:00:00:03')
@@ -152,41 +154,17 @@ class SimpleSwitch13(app_manager.RyuApp):
                                               )
                 self.logger.info("Block entry: %s" % str(blockflow));
                 datapath.send_msg(blockflow)
-            
-
-            if(blocked_flag[num]):
-                self.logger.info("Host%d's Block Timer: %d" % (num,blocked_timer[num]));
-                self.blocked_timer_add(num)
-            if(blocked_timer[num] == 50+monitor_time): #Re-Open the blocked host
-                self.blocked_init(num)
+            if(host[num].blocked_flag):
+                self.logger.info("Host%d's Block Timer: %d" % (num,host[num].blocked_timer));
+                host[num].blocked_timer_add()
+            if(host[num].blocked_timer == 50+monitor_time): #Re-Open the blocked host
+                host[num].blocked_init()
                 empty_match = parser.OFPMatch(eth_src = '00:00:00:00:00:03')
                 instructions = []
                 flow_mod = self.del_flow(datapath, empty_match,instructions)
                 self.logger.info("Delete the Blocked entry(Re-Open Success!)")
+            num = 0
 
-    def change_now(self,num1,num2):
-        global now
-        now[num1] = num2
-    def change_last(self,num1,num2):
-        global last
-        last[num1] = num2
-    def change_flow(self,num1,num2):
-        global flow
-        flow[num1] = num2
-    def blocked_init(self,index):
-        global blocked_timer
-        global blocked_flag
-        blocked_timer[index] = 0
-        blocked_flag[index] = False
-    def blocked_timer_add(self,index):
-        global blocked_timer
-        global blocked_flag
-        global monitor_time
-        blocked_flag[index] = True
-        blocked_timer[index] += monitor_time
-    def set_blocked_flag(self,index,boolean):
-        global blocked_flag
-        blocked_flag[index] = boolean
         #============================monitor============================#
 
         #============================SWITCH============================#
