@@ -9,16 +9,28 @@ import sys
 # curl -X DELETE -d '{"rule_id": "5"}' http://localhost:8080/firewall/rules/0000000000000001
 
 # -------------------------------------------------------------------------------------------#
-while(1):
-  SRC = raw_input('Enter Source IP : ')
-  DST = raw_input('Enter Destination IP : ')
-  PROTO = raw_input('Enter Protocal : ')
 
-  rule = {"nw_src" : SRC,"nw_dst" : DST,"nw_proto" : PROTO}
+def add_entry():
+    while(1):
+      SRC = raw_input('Enter Source IP : ')
+      DST = raw_input('Enter Destination IP : ')
+      PROTO = raw_input('Enter Protocal : ')
+      PRIORITY = raw_input('Enter Priority (0 - 65533) : ')  
+      if (PROTO == ""):
+        PROTO = "ICMP"
+      if (PRIORITY == ""):
+        PRIORITY = "1"
+      print PROTO
+      print PRIORITY
+      rule = {"nw_src" : SRC,"nw_dst" : DST,"nw_proto" : PROTO,"priority" : PRIORITY}
+      set_rule1 = requests.post("http://localhost:8080/firewall/rules/0000000000000001", json= rule)
 
-  set_rule1 = requests.post("http://localhost:8080/firewall/rules/0000000000000001", json= rule)
 
 
 
+print ("[A]AddEntry , [B]BlockEntry , [D]DelelteEntry , [S]ShowEntrys")
+action = raw_input('Enter your Action : ')
 
+if (action == "A"):
+  add_entry()
 
