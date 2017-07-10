@@ -23,6 +23,6 @@ set_qos_rate = requests.post("http://localhost:8080/qos/queue/0000000000000001",
 set_rule = requests.post("http://localhost:8080/qos/rules/0000000000000001", json= rule)
 get_rule = requests.get("http://localhost:8080/qos/rules/0000000000000001")
 
-print(set_qos_rate.text)
-print(set_rule.text)
-print(get_rule.text)
+#print(set_qos_rate.text)
+#print(set_rule.text)
+#print(get_rule.text)
