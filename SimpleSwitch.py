@@ -14,9 +14,6 @@
 # limitations under the License.
 
 import time
-import json
-import threading
-import subprocess , sys
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
@@ -30,51 +27,11 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import udp
 from array import *
 
-count_pi = 0
-count_last = 0
-time_last = 0
-time_now = 1
-check_point = 0
 
-pktin_flag = False
-
-count_src = ''
-count_dst = ''
-
-class PacketInCount (threading.Thread): 
-       def run(self):
-
-              testflag = 1
-
-              f = open('PacketInLog.txt','w')
-              while(1): 
-                     global count_pi
-                     global count_last
-                     global count_src
-                     global count_dst
-                     output_time = str( time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) )
-                     output =str(count_pi - count_last)
-                     print "**********"
-                     print "PacketIn:", output ,"(Count/Sec)"
-
-                     if(testflag == 0):
-                       cmd = ' ryu-manager --observe-links --ofp-tcp-listen-port 5555 --verbose rest_firewall.py'
-                       subprocess.call(cmd , shell=True)
-                       print "High PacketIn Mode..."
-                       testflag = 1
-                     
-                     global pktin_flag
-                     if(count_pi - count_last ) > 150 :
-                       pktin_flag = True
-
-                     print "**********"
-                     f.write(output_time + ' --> ' + output + '\n')
-                     #f.write(' --> ')
-                     #f.write(output)
-                     #f.write('\n')
-                     count_last = count_pi
-                     time.sleep(1) 
-PacketInCount().start()
+output_flag = [0 for n in range(0,60)]
+pktin_count = [0 for n in range(0,60)]
+count = 0
+f = open('PacketInLog.txt','w')
 
 class SimpleSwitch13(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -82,6 +39,7 @@ class SimpleSwitch13(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(SimpleSwitch13, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
+    
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -109,7 +67,7 @@ class SimpleSwitch13(app_manager.RyuApp):
                                              actions)]
         if buffer_id:
             mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
-                                    priority=priority, match=match,
+                                     priority=priority, match=match,
                                     instructions=inst)
         else:
             mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
@@ -118,7 +76,6 @@ class SimpleSwitch13(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
-        print("************ Start of Pacet-in **************")
         # If you hit this you might want to increase
         # the "miss_send_length" of your switch
         if ev.msg.msg_len < ev.msg.total_len:
@@ -130,54 +87,70 @@ class SimpleSwitch13(app_manager.RyuApp):
         parser = datapath.ofproto_parser
         in_port = msg.match['in_port']
 
-
-        #pkt = packet.Packet(array.array('B',msg.data))
         pkt = packet.Packet(msg.data)
-
-        global count_src
-        global count_dst
-        ff = open('PacketInLog.txt','a')
-        for p in pkt:
-            #print p.protocol_name,p
-            print p
-            if(p.protocol_name == "arp"):
-                _arp = pkt.get_protocols(arp.arp)[0]
-                count_src = _arp.src_ip
-                count_dst = _arp.dst_ip
-                ff.write('Src IP : ' + _arp.src_ip + '\n')
-                ff.write('Dst IP : ' + _arp.dst_ip + '\n')
-                print('arp_src: '+ _arp.src_ip)
-                print('arp_dst: '+ _arp.dst_ip)
-
-            if(p.protocol_name == 'ipv4'):
-                _ipv4 = pkt.get_protocols(ipv4.ipv4)[0]
-                count_src = _ipv4.src
-                count_dst = _ipv4.dst
-                ff.write('Src IP : ' + _ipv4.src + '\n')
-                ff.write('Src IP : ' + _ipv4.dst + '\n')
-                print('ipv4_src: '+ _ipv4.src)
-                print('ipv4_dst: '+ _ipv4.dst)
-
-        #if eth.ethertype == ether_types.ETH_TYPE_LLDP:
-        #    # ignore lldp packet
-        #    return
-
         eth = pkt.get_protocols(ethernet.ethernet)[0]
+
+        if eth.ethertype == ether_types.ETH_TYPE_LLDP:
+            # ignore lldp packet
+            return
         dst = eth.dst
         src = eth.src
 
-
-        global pktin_flag
-        if(pktin_flag == True):
-          src = eth.dst
-
         dpid = datapath.id
         self.mac_to_port.setdefault(dpid, {})
+
         #self.logger.info("packet in %s %s %s %s", dpid, src, dst, in_port)
-        global count_pi
-        count_pi += 1
 
 
+        #=============My Block Start====================#
+
+            #>>>>>>>>>>>>>>> I P <<<<<<<<<<<<<<#
+        pkt = packet.Packet(msg.data)
+
+        for p in pkt:
+            print p
+            if(p.protocol_name == "arp"):
+                _arp = pkt.get_protocols(arp.arp)[0]
+                f.write('    Arp S  :' + _arp.src_ip + '\n')
+                f.write('    Arp D  :' + _arp.dst_ip + '\n')
+                
+            if(p.protocol_name == 'ipv4'):
+                _ipv4 = pkt.get_protocols(ipv4.ipv4)[0]
+                f.write('    IPv4 S :' + _ipv4.src + '\n')
+                f.write('    IPv4 D :' + _ipv4.dst + '\n')
+            #>>>>>>>>>>>>>>> I P <<<<<<<<<<<<<<#
+
+
+        global pktin_count
+        a = int(time.strftime("%S", time.localtime()))
+        pktin_count[a] += 1
+        #print time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) 
+        if (output_flag[a-1]==0 and a>0):
+            output_time = str( time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            f.write(output_time + ' --> ' + str(pktin_count[a-1]) + '\n')
+            print "**********"
+            print "PacketIn Count : ",
+            print pktin_count[a-1]
+            print "**********"
+            output_flag[a-1] = 1
+
+        if (output_flag[a-1]==0 and a==0):
+            output_time = str( time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            f.write(output_time + ' --> ' + str(pktin_count[59]) + '\n')
+            print "**********"
+            print "PacketIn Count : ",
+            print pktin_count[59]
+            print "**********"
+            output_flag[59] = 1
+            pktin_count[59] = 0
+
+        if(a==59):
+            for i in range(0,58):
+                pktin_count[i] = 0
+                output_flag[i] = 0
+        #============My Block End===================#
+        
+        
         # learn a mac address to avoid FLOOD next time.
         self.mac_to_port[dpid][src] = in_port
 
@@ -205,5 +178,3 @@ class SimpleSwitch13(app_manager.RyuApp):
         out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
                                   in_port=in_port, actions=actions, data=data)
         datapath.send_msg(out)
-
-        print("********** END OF Pacet-IN ***********")
