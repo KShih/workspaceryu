@@ -22,6 +22,9 @@ from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
+from ryu.lib.packet import arp
+from ryu.lib.packet import ipv4
+
 
 output_flag = [0 for n in range(0,60)]
 pktin_count = [0 for n in range(0,60)]
@@ -98,6 +101,20 @@ class SimpleSwitch13(app_manager.RyuApp):
 
 
         #=============My Block Start====================#
+
+                    #===== I P =====#
+        pkt = packet.Packet(msg.data)
+
+        for p in pkt:
+            print p
+            if(p.protocol_name == "arp"):
+                _arp = pkt.get_protocols(arp.arp)[0]
+                f.write(_arp.src_ip + '\n')
+                f.write(_arp.dst_ip + '\n')
+                print _arp.src_ip
+                print _arp.dst_ip
+                    #===== I P =====#
+
         global pktin_count
         global count
         a = int(time.strftime("%S", time.localtime()))
