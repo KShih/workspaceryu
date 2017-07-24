@@ -41,14 +41,14 @@ pktin_flag = False
 count_src = ''
 count_dst = ''
 
-class PacketInCount (threading.Thread): 
+class PacketInCount (threading.Thread,lock):
+    while(True):
+       lock.acquire()
        def run(self):
-
               testflag = 1
-
               f = open('PacketInLog.txt','w')
               while(1): 
-                     global count_pi
+                      globa l count_pi
                      global count_last
                      global count_src
                      global count_dst
@@ -69,14 +69,13 @@ class PacketInCount (threading.Thread):
 
                      print "**********"
                      f.write(output_time + ' --> ' + output + '\n')
-                     #f.write(' --> ')
-                     #f.write(output)
-                     #f.write('\n')
                      count_last = count_pi
                      time.sleep(1) 
-PacketInCount().start()
+       lock.release()
 
-class SimpleSwitch13(app_manager.RyuApp):
+class SimpleSwitch13(threading.Thread,lock,app_manager.RyuApp):
+  while(True):
+    lock.acquire()
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
@@ -207,3 +206,11 @@ class SimpleSwitch13(app_manager.RyuApp):
         datapath.send_msg(out)
 
         print("********** END OF Pacet-IN ***********")
+    lock.release()
+
+if __name__ == "__main__":
+        lock = thread.allocate_lock() 
+        thread.start_new_thread(PacketInCount, (lock))
+        thread.start_new_thread(SimpleSwitch13, (lock))
+        while (True):
+            pass
