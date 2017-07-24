@@ -1,0 +1,59 @@
+## 
+## Use the Packet-in's src to calculate the entropy of Packet-IN
+##
+
+from math import log
+
+d = dict()
+f = open('PacketInLog.txt','r')
+num_lines = sum(1 for line in open('PacketInLog.txt'))
+ipTotal = 0.0 # the total number of each ip
+
+# Split the ip address & turn into class 
+def getKey():
+    global ipTotal
+    str1 = ""
+    list1= []
+    _input = f.readline()
+    list1 = _input.split('.',3)
+    if(len(list1) < 3): # the wrong input
+        return str1
+    else:
+        for i in range(0,3):
+            str1 += list1[i]
+        print(str1)
+        ipTotal += 1
+        return str1
+
+# Count the class of each ip
+def countIP():
+    for i in range(0,num_lines):
+        key = getKey()
+        if(key != ''):
+            if key in d:
+                d[key] += 1
+            else:
+                d[key] = 1
+
+# Count the Entropy
+def countEnt():
+    global ipTotal
+    prob = 0.1
+    count = 0.0
+    entropy = 0.0
+    prob_list = []
+    for i in range(0,len(d)):
+        count = d.values()[i]
+        prob = count / ipTotal
+        print(prob)
+        prob_list.append(prob)
+    for i in range(0,len(d)):
+        entropy -= prob_list[i] * log(prob_list[i], 2 )
+    print("entropy: ",entropy)
+    return entropy
+
+# main():
+countIP()
+print(d)
+countEnt()
+
