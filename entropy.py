@@ -3,12 +3,13 @@
 ##
 
 from math import log
+import time,sys
 
-d = dict()
-f = open('PacketInLog.txt','r')
-num_lines = sum(1 for line in open('PacketInLog.txt'))
-ipTotal = 0.0 # the total number of each ip
-
+#d = dict()
+#f = open('PacketInLog.txt','r')
+ef = open('EntropyLog.txt','w')
+#num_lines = sum(1 for line in open('PacketInLog.txt'))
+#ipTotal = 0.0 # the total number of each ip
 # Split the ip address & turn into class 
 def getKey():
     global ipTotal
@@ -21,7 +22,7 @@ def getKey():
     else:
         for i in range(0,3):
             str1 += list1[i]
-        print(str1)
+        #print(str1)
         ipTotal += 1
         return str1
 
@@ -45,15 +46,23 @@ def countEnt():
     for i in range(0,len(d)):
         count = d.values()[i]
         prob = count / ipTotal
-        print(prob)
+        #print(prob)
         prob_list.append(prob)
     for i in range(0,len(d)):
         entropy -= prob_list[i] * log(prob_list[i], 2 )
     print("entropy: ",entropy)
+    ef.write('entropy :' + str(entropy) + '\n')
     return entropy
 
 # main():
-countIP()
-print(d)
-countEnt()
+while(1):
+    f = open('PacketInLog.txt','r')
+    num_lines = sum(1 for line in open('PacketInLog.txt'))
+    ipTotal = 0.0 # the total number of each ip
+    d = dict()
+    d.clear()
 
+    countIP()
+    print(d)
+    countEnt()
+    time.sleep(5)

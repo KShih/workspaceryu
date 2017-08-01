@@ -32,8 +32,8 @@ from array import *
 output_flag = [0 for n in range(0,60)]
 pktin_count = [0 for n in range(0,60)]
 count = 0
-f = open('5SecPacketInLog.txt','w')
-fall = open('PacketInLog.txt','w')
+f = open('PacketInLog.txt','w')
+
 
 
 class SimpleSwitch13(app_manager.RyuApp):
@@ -111,7 +111,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         pkt = packet.Packet(msg.data)
 
         for p in pkt:
-            #print p
+            print p
             if(p.protocol_name == 'arp'):
                 _arp = pkt.get_protocols(arp.arp)[0]
                 #f.write(_arp.src_ip + '\n')
@@ -120,23 +120,19 @@ class SimpleSwitch13(app_manager.RyuApp):
             if(p.protocol_name == 'ipv4'):
                 _ipv4 = pkt.get_protocols(ipv4.ipv4)[0]
                 f.write(_ipv4.src + '\n')
-                fall.write(_ipv4.src + '\n')
-                #f.write(_ipv4.dst + '\n' + '\n')
+                #f.write(_ipv4.dst + '\n')
             #>>>>>>>>>>>>>>> I P <<<<<<<<<<<<<<#
 
         global f
-        global fall
         global pktin_count
         a = int(time.strftime("%S", time.localtime()))
         pktin_count[a] += 1
         #print time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) 
         if (output_flag[a-1]==0 and a>0):
-            if(a % 5 == 0):
-                f = open('5SecPacketInLog.txt','w')
-            #f.close()
-            #fall.close()
-            fall = open('PacketInLog.txt','a')
-            f = open('5SecPacketInLog.txt','a')
+            #if(a % 5 == 0):
+            #    f = open('PacketInLog.txt','w')
+            f.close()
+            f = open('PacketInLog.txt','a')
             output_time = str( time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             #f.write(output_time + ' --> ' + str(pktin_count[a-1]) + '\n')
             print "**********"
@@ -146,10 +142,8 @@ class SimpleSwitch13(app_manager.RyuApp):
             output_flag[a-1] = 1
 
         if (output_flag[a-1]==0 and a==0):
-            #f.close()
-            #fall.close()
-            fall = open('PacketInLog.txt','a')
-            f = open('5SecPacketInLog.txt','a')
+            f.close()
+            f = open('PacketInLog.txt','a')
             output_time = str( time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             #f.write(output_time + ' --> ' + str(pktin_count[59]) + '\n')
             print "**********"
