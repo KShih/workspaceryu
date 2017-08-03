@@ -20,6 +20,7 @@ from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
+from ryu.ofproto import ether
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
@@ -98,6 +99,9 @@ class SimpleSwitch13(app_manager.RyuApp):
             return
         dst = eth.dst
         src = eth.src
+        
+        minute = int(time.strftime("%M", time.localtime()))
+        
 
         dpid = datapath.id
         self.mac_to_port.setdefault(dpid, {})
@@ -109,22 +113,30 @@ class SimpleSwitch13(app_manager.RyuApp):
 
             #>>>>>>>>>>>>>>> I P <<<<<<<<<<<<<<#
         pkt = packet.Packet(msg.data)
+        
+	if eth.ethertype == ether.ETH_TYPE_IP:
+            #print 'Receive an ipv4 packet'
+            ipv4_pkt = pkt.get_protocols(ipv4.ipv4)[0]
+            print 'Src: %s, Dst: %s' % (ipv4_pkt.src, ipv4_pkt.dst)
+           #fall.write(ipv4_pkt.src + '\n')
+            fall.write('Src : ' + ipv4_pkt.src + '\n')
+            fall.write('Dst : ' + ipv4_pkt.dst + '\n' + '\n')
 
-        for p in pkt:
-            #print p
-            if(p.protocol_name == 'arp'):
-                _arp = pkt.get_protocols(arp.arp)[0]
-                #f.write(_arp.src_ip + '\n')
+        #for p in pkt:
+        #    print p
+           # if(p.protocol_name == 'arp'):
+               # _arp = pkt.get_protocols(arp.arp)[0]
+               # f.write(_arp.src_ip + '\n')
+               # fall.write(_arp.src_ip + '\n')
                 #f.write(_arp.dst_ip + '\n')
                 
-            if(p.protocol_name == 'ipv4'):
-                _ipv4 = pkt.get_protocols(ipv4.ipv4)[0]
-                f.write(_ipv4.src + '\n')
-                fall.write(_ipv4.src + '\n')
-                #f.write(_ipv4.dst + '\n' + '\n')
+        #    if(p.protocol_name == 'ipv4'):
+        #        _ipv4 = pkt.get_protocols(ipv4.ipv4)[0]
+        #        f.write(_ipv4.src + '\n')
+        #        fall.write(_ipv4.src + '\n')
+        #        f.write(_ipv4.dst + '\n' + '\n')
             #>>>>>>>>>>>>>>> I P <<<<<<<<<<<<<<#
 
-        global f
         global fall
         global pktin_count
         a = int(time.strftime("%S", time.localtime()))
@@ -136,7 +148,7 @@ class SimpleSwitch13(app_manager.RyuApp):
             #f.close()
             #fall.close()
             fall = open('PacketInLog.txt','a')
-            f = open('5SecPacketInLog.txt','a')
+            #f = open('5SecPacketInLog.txt','a')
             output_time = str( time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             #f.write(output_time + ' --> ' + str(pktin_count[a-1]) + '\n')
             print "**********"
@@ -149,7 +161,7 @@ class SimpleSwitch13(app_manager.RyuApp):
             #f.close()
             #fall.close()
             fall = open('PacketInLog.txt','a')
-            f = open('5SecPacketInLog.txt','a')
+            #f = open('5SecPacketInLog.txt','a')
             output_time = str( time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             #f.write(output_time + ' --> ' + str(pktin_count[59]) + '\n')
             print "**********"
@@ -175,6 +187,7 @@ class SimpleSwitch13(app_manager.RyuApp):
             out_port = ofproto.OFPP_FLOOD
 
         actions = [parser.OFPActionOutput(out_port)]
+            
 
         # install a flow to avoid packet_in next time
         if out_port != ofproto.OFPP_FLOOD:
@@ -190,6 +203,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
             data = msg.data
 
-        out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
-                                  in_port=in_port, actions=actions, data=data)
+        out = parser.OFPPacketOut(datapath=datapath , buffer_id = msg.buffer_id,
+                                  in_port=in_port , actions=actions,data=data)
+            
         datapath.send_msg(out)
