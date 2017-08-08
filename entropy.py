@@ -5,13 +5,15 @@
 from math import log
 import time,sys
 
-#d = dict()
-#f = open('PacketInLog.txt','r')
+f = open('5SecPacketInLog.txt','r')
+w_entropy = open('EntropyLog.txt','a')
+ipTotal = 0.0 # the total number of each ip
+d = dict()
 ef = open('EntropyLog.txt','w')
-#num_lines = sum(1 for line in open('PacketInLog.txt'))
+num_lines = sum(1 for line in open('5SecPacketInLog.txt'))
 #ipTotal = 0.0 # the total number of each ip
 # Split the ip address & turn into class 
-def getKey():
+def getKey(f):
     global ipTotal
     str1 = ""
     list1= []
@@ -27,9 +29,10 @@ def getKey():
         return str1
 
 # Count the class of each ip
-def countIP():
+def countIP(num_lines):
+    global f
     for i in range(0,num_lines):
-        key = getKey()
+        key = getKey(f)
         if(key != ''):
             if key in d:
                 d[key] += 1
@@ -37,8 +40,7 @@ def countIP():
                 d[key] = 1
 
 # Count the Entropy
-def countEnt():
-    global ipTotal
+def countEnt(ipTotal,d):
     prob = 0.1
     count = 0.0
     entropy = 0.0
@@ -46,7 +48,6 @@ def countEnt():
     for i in range(0,len(d)):
         count = d.values()[i]
         prob = count / ipTotal
-        #print(prob)
         prob_list.append(prob)
     for i in range(0,len(d)):
         entropy -= prob_list[i] * log(prob_list[i], 2 )
@@ -54,15 +55,19 @@ def countEnt():
     ef.write('entropy :' + str(entropy) + '\n')
     return entropy
 
-# main():
-while(1):
-    f = open('PacketInLog.txt','r')
-    num_lines = sum(1 for line in open('PacketInLog.txt'))
-    ipTotal = 0.0 # the total number of each ip
-    d = dict()
-    d.clear()
 
-    countIP()
-    print(d)
-    countEnt()
-    time.sleep(5)
+def entropy():
+    global f
+    global w_entropy
+    global num_lines
+    global ipTotal
+    global d
+    d.clear()
+    countIP(num_lines)
+    countEnt(ipTotal,d)
+
+    output = str(countEnt(ipTotal,d))
+    w_entropy.write('Entropy : ' + output + '\n')
+    w_entropy = open('EntropyLog.txt','a')
+    print d
+entropy()

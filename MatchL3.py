@@ -27,8 +27,9 @@ from ryu.lib.packet import ether_types
 from ryu.lib.packet import arp
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import udp
+from ryu import utils
 from array import *
-from entropy import entropy
+
 
 output_flag = [0 for n in range(0,60)]
 pktin_count = [0 for n in range(0,60)]
@@ -114,8 +115,7 @@ class SimpleSwitch13(app_manager.RyuApp):
 
             #>>>>>>>>>>>>>>> I P <<<<<<<<<<<<<<#
         pkt = packet.Packet(msg.data)
-        global f
-
+        
 	if eth.ethertype == ether.ETH_TYPE_IP:
             #print 'Receive an ipv4 packet'
             ipv4_pkt = pkt.get_protocols(ipv4.ipv4)[0]
@@ -123,9 +123,8 @@ class SimpleSwitch13(app_manager.RyuApp):
            #fall.write(ipv4_pkt.src + '\n')
             fall.write('Src : ' + ipv4_pkt.src + '\n')
             fall.write('Dst : ' + ipv4_pkt.dst + '\n' + '\n')
-            f.write('Src : ' + ipv4_pkt.src + '\n')
-            f.write('Dst : ' + ipv4_pkt.dst + '\n')
 
+        #arp_pkt = pkt.get_protocols(arp.arp)[0]
         #for p in pkt:
         #    print p
            # if(p.protocol_name == 'arp'):
@@ -148,12 +147,13 @@ class SimpleSwitch13(app_manager.RyuApp):
         #print time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) 
         if (output_flag[a-1]==0 and a>0):
             if(a % 5 == 0):
-                f.close()
-                entropy()
                 f = open('5SecPacketInLog.txt','w')
+            #f.close()
+            #fall.close()
             fall = open('PacketInLog.txt','a')
-            f = open('5SecPacketInLog.txt','a')
+            #f = open('5SecPacketInLog.txt','a')
             output_time = str( time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+            #f.write(output_time + ' --> ' + str(pktin_count[a-1]) + '\n')
             print "**********"
             print "PacketIn Count : ",
             print pktin_count[a-1]
@@ -191,10 +191,9 @@ class SimpleSwitch13(app_manager.RyuApp):
 
         actions = [parser.OFPActionOutput(out_port)]
 
-
         if (eth.ethertype == ether.ETH_TYPE_IP):
-            print "############ IPV4 flow ##########"
-            match = parser.OFPMatch(in_port=in_port, eth_type=0x0800, ipv4_src=ipv4_pkt.src, eth_dst=dst)
+            print "###########  IPV4 flow  ###############"
+            match = parser.OFPMatch(in_port=in_port, eth_dst=dst,eth_type=0x0800, ipv4_src=ipv4_pkt.src)
             # verify if we have a valid buffer_id, if yes avoid to send both
             # flow_mod & packet_out
             if msg.buffer_id != ofproto.OFP_NO_BUFFER:
@@ -220,5 +219,22 @@ class SimpleSwitch13(app_manager.RyuApp):
         out = parser.OFPPacketOut(datapath=datapath , buffer_id = msg.buffer_id,
                                   in_port=in_port , actions=actions,data=data)
         datapath.send_msg(out)
+
+##      /* Print the details of each OFPacketIN */
+        if msg.reason == ofproto.OFPR_NO_MATCH:
+            reason = 'NO MATCH'
+        elif msg.reason == ofproto.OFPR_ACTION:
+            reason = 'ACTION'
+        elif msg.reason == ofproto.OFPR_INVALID_TTL:
+            reason = 'INVALID TTL'
+        else:
+            reason = 'unknown'
+        self.logger.debug('OFPPacketIn received: '
+                      'buffer_id=%x total_len=%d reason=%s '
+                      'table_id=%d cookie=%d match=%s ',
+                      msg.buffer_id, msg.total_len, reason,
+                      msg.table_id, msg.cookie, msg.match)
+# utils.hex_array(msg.data)
+        print '..................'
 
 
