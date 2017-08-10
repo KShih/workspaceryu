@@ -117,28 +117,19 @@ class SimpleSwitch13(app_manager.RyuApp):
         global f
 
 	if eth.ethertype == ether.ETH_TYPE_IP:
+	    f = open('5SecPacketInLog.txt','a')
+	    fall = open('PacketInLog.txt','a')
             #print 'Receive an ipv4 packet'
             ipv4_pkt = pkt.get_protocols(ipv4.ipv4)[0]
             print 'Src: %s, Dst: %s' % (ipv4_pkt.src, ipv4_pkt.dst)
            #fall.write(ipv4_pkt.src + '\n')
-            fall.write('Src : ' + ipv4_pkt.src + '\n')
-            fall.write('Dst : ' + ipv4_pkt.dst + '\n' + '\n')
-            f.write('Src : ' + ipv4_pkt.src + '\n')
-            f.write('Dst : ' + ipv4_pkt.dst + '\n')
+            fall.write(ipv4_pkt.src + '\n')
+            #fall.write('Dst : ' + ipv4_pkt.dst + '\n' + '\n')
+            f.write(ipv4_pkt.src + '\n')
+            #f.write('Dst : ' + ipv4_pkt.dst + '\n')
 
-        #for p in pkt:
-        #    print p
-           # if(p.protocol_name == 'arp'):
-               # _arp = pkt.get_protocols(arp.arp)[0]
-               # f.write(_arp.src_ip + '\n')
-               # fall.write(_arp.src_ip + '\n')
-                #f.write(_arp.dst_ip + '\n')
-                
-        #    if(p.protocol_name == 'ipv4'):
-        #        _ipv4 = pkt.get_protocols(ipv4.ipv4)[0]
-        #        f.write(_ipv4.src + '\n')
-        #        fall.write(_ipv4.src + '\n')
-        #        f.write(_ipv4.dst + '\n' + '\n')
+            f.close()
+            fall.close()
             #>>>>>>>>>>>>>>> I P <<<<<<<<<<<<<<#
 
         global fall
@@ -148,12 +139,10 @@ class SimpleSwitch13(app_manager.RyuApp):
         #print time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) 
         if (output_flag[a-1]==0 and a>0):
             if(a % 5 == 0):
-                f.close()
                 entropy()
                 f = open('5SecPacketInLog.txt','w')
             fall = open('PacketInLog.txt','a')
             f = open('5SecPacketInLog.txt','a')
-            output_time = str( time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             print "**********"
             print "PacketIn Count : ",
             print pktin_count[a-1]
@@ -161,12 +150,7 @@ class SimpleSwitch13(app_manager.RyuApp):
             output_flag[a-1] = 1
 
         if (output_flag[a-1]==0 and a==0):
-            #f.close()
-            #fall.close()
             fall = open('PacketInLog.txt','a')
-            #f = open('5SecPacketInLog.txt','a')
-            output_time = str( time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
-            #f.write(output_time + ' --> ' + str(pktin_count[59]) + '\n')
             print "**********"
             print "PacketIn Count : ",
             print pktin_count[59]
