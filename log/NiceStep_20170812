@@ -1,0 +1,24 @@
+entropy :0.0
+entropy :2.68401728083
+entropy :1.37095059445
+entropy :0.970950594455
+entropy :1.37878349349
+entropy :1.55665670746
+
+do hping3
+entropy :7.5077946402
+entropy :10.6554713368
+
+stop hping3
+entropy :0.5435644432
+entropy :1.56127812446
+entropy :0.918295834054
+entropy :1.58496250072
+entropy :1.75
+
+do hping3 again
+entropy :4.80735492206
+entropy :10.4809379772
+entropy :8.98018857331
+entropy :2.80735492206
+entropy :1.78992907531
