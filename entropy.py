@@ -6,7 +6,6 @@ from math import log
 import time,sys
 
 f = open('5SecPacketInLog.txt','r')
-w_entropy = open('EntropyLog.txt','w')
 ipTotal = 0.0 # the total number of each ip
 d = dict()
 ef = open('EntropyLog.txt','w')
@@ -55,21 +54,27 @@ def countEnt(ipTotal,d):
     ef.write('entropy :' + str(entropy) + '\n')
     return entropy
 
+def cleard():
+    global d
+    d.clear()
 
 def entropy():
     global f
-    global w_entropy
     global num_lines
     global ipTotal
     global d
-    #d.clear()
+    global ef
+    d.clear()
     countIP(num_lines)
     countEnt(ipTotal,d)
 
-    output = str(countEnt(ipTotal,d))
-    w_entropy.write(time.strftime('%s',time.localtime()))
-    w_entropy.write('Entropy : ' + output + '\n')
-    w_entropy.close()
-    w_entropy = open('EntropyLog.txt','a')
+    ef.close()
+    ef = open('EntropyLog.txt','a')
     print d
-entropy()
+
+    #init (by Sean)
+    f = open('5SecPacketInLog.txt','r')
+    ipTotal = 0.0 # the total number of each ip
+    d = dict()
+    num_lines = sum(1 for line in open('5SecPacketInLog.txt'))
+

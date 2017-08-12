@@ -33,8 +33,7 @@ from entropy import entropy
 output_flag = [0 for n in range(0,60)]
 pktin_count = [0 for n in range(0,60)]
 count = 0
-f = open('5SecPacketInLog.txt','w')
-fall = open('PacketInLog.txt','w')
+close_flag = 0
 
 
 class SimpleSwitch13(app_manager.RyuApp):
@@ -43,7 +42,10 @@ class SimpleSwitch13(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(SimpleSwitch13, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
-    
+        fall = open('PacketInLog.txt','w')
+        f = open('5SecPacketInLog.txt','w')
+        f.close()
+        fall.close()
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -99,50 +101,30 @@ class SimpleSwitch13(app_manager.RyuApp):
             return
         dst = eth.dst
         src = eth.src
-       
-
-        minute = int(time.strftime("%M", time.localtime()))
-        
-
+    
         dpid = datapath.id
         self.mac_to_port.setdefault(dpid, {})
 
         #self.logger.info("packet in %s %s %s %s", dpid, src, dst, in_port)
 
-
+        f = open('5SecPacketInLog.txt','a')
+	fall = open('PacketInLog.txt','a')
         #=============My Block Start====================#
-
-            #>>>>>>>>>>>>>>> I P <<<<<<<<<<<<<<#
-        pkt = packet.Packet(msg.data)
-        global f
-
-	if eth.ethertype == ether.ETH_TYPE_IP:
-	    f = open('5SecPacketInLog.txt','a')
-	    fall = open('PacketInLog.txt','a')
-            #print 'Receive an ipv4 packet'
-            ipv4_pkt = pkt.get_protocols(ipv4.ipv4)[0]
-            print 'Src: %s, Dst: %s' % (ipv4_pkt.src, ipv4_pkt.dst)
-           #fall.write(ipv4_pkt.src + '\n')
-            fall.write(ipv4_pkt.src + '\n')
-            #fall.write('Dst : ' + ipv4_pkt.dst + '\n' + '\n')
-            f.write(ipv4_pkt.src + '\n')
-            #f.write('Dst : ' + ipv4_pkt.dst + '\n')
-
-            f.close()
-            fall.close()
-            #>>>>>>>>>>>>>>> I P <<<<<<<<<<<<<<#
-
-        global fall
-        global pktin_count
+        global close_flag
         a = int(time.strftime("%S", time.localtime()))
         pktin_count[a] += 1
         #print time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) 
         if (output_flag[a-1]==0 and a>0):
-            if(a % 5 == 0):
+            if(a % 5 == 0 and close_flag == 1):
                 entropy()
+                f.close()
                 f = open('5SecPacketInLog.txt','w')
+                close_flag = 0
+
+            if(a % 6 ==0):
+                close_flag = 1
+
             fall = open('PacketInLog.txt','a')
-            f = open('5SecPacketInLog.txt','a')
             print "**********"
             print "PacketIn Count : ",
             print pktin_count[a-1]
@@ -150,6 +132,7 @@ class SimpleSwitch13(app_manager.RyuApp):
             output_flag[a-1] = 1
 
         if (output_flag[a-1]==0 and a==0):
+            entropy()
             fall = open('PacketInLog.txt','a')
             print "**********"
             print "PacketIn Count : ",
@@ -162,6 +145,17 @@ class SimpleSwitch13(app_manager.RyuApp):
             for i in range(0,58):
                 pktin_count[i] = 0
                 output_flag[i] = 0
+
+            #>>>>>>>>>>>>>>> I P <<<<<<<<<<<<<<#
+        pkt = packet.Packet(msg.data)
+	if eth.ethertype == ether.ETH_TYPE_IP:
+            ipv4_pkt = pkt.get_protocols(ipv4.ipv4)[0]
+            print 'Src: %s, Dst: %s' % (ipv4_pkt.src, ipv4_pkt.dst)
+            fall.write(ipv4_pkt.src + '\n')
+            f.write(ipv4_pkt.src + '\n')
+
+            #>>>>>>>>>>>>>>> I P <<<<<<<<<<<<<<#
+
         #============My Block End===================#
         
 
