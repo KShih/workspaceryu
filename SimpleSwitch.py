@@ -34,7 +34,8 @@ output_flag = [0 for n in range(0,60)]
 pktin_count = [0 for n in range(0,60)]
 count = 0
 close_flag = 0
-
+inst = ''
+blockip_flag = False
 
 class SimpleSwitch13(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -68,9 +69,13 @@ class SimpleSwitch13(app_manager.RyuApp):
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
+        global blockip_flag
 
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                             actions)]
+        if blockip_flag == False:
+            inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
+        else:
+            inst = [parser.OFPInstructionActions(ofproto.OFPIT_CLEAR_ACTIONS, []) ]
+
         if buffer_id:
             mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
                                      priority=priority, match=match,
@@ -175,6 +180,14 @@ class SimpleSwitch13(app_manager.RyuApp):
             match = parser.OFPMatch(in_port=in_port, eth_type=0x0800, ipv4_src=ipv4_pkt.src, eth_dst=dst)
             # verify if we have a valid buffer_id, if yes avoid to send both
             # flow_mod & packet_out
+
+            #check ip
+            global blockip_flag
+            if ('120.113.200.113' in ipv4_pkt.src):
+                blockip_flag = True
+            else:
+                blockip_flag = False
+
             if msg.buffer_id != ofproto.OFP_NO_BUFFER:
                 self.add_flow(datapath, 1, match, actions, msg.buffer_id)
                 return
