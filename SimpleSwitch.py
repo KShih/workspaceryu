@@ -158,7 +158,6 @@ class SimpleSwitch13(app_manager.RyuApp):
             print 'Src: %s, Dst: %s' % (ipv4_pkt.src, ipv4_pkt.dst)
             fall.write(ipv4_pkt.src + '\n')
             f.write(ipv4_pkt.src + '\n')
-
             #>>>>>>>>>>>>>>> I P <<<<<<<<<<<<<<#
 
         #============My Block End===================#
@@ -184,12 +183,20 @@ class SimpleSwitch13(app_manager.RyuApp):
             #check ip
             global blockip_flag
 
-            if ('210.69.154.247' in ipv4_pkt.src):
-                blockip_flag = True
-            elif ('117.56.12.178' in ipv4_pkt.src):
-                blockip_flag = True
-            else:
+            #if ('120.113' in ipv4_pkt.src):
+            #    blockip_flag = False
+            #elif ('10.' in ipv4_pkt.src):
+            #    blockip_flag = False
+            if ('117.56.6.1' in ipv4_pkt.src):
                 blockip_flag = False
+            elif ('192.30.255' in ipv4_pkt.src):
+                blockip_flag = False
+            elif ('120.113.200' in ipv4_pkt.src):
+                blockip_flag = False
+            elif ('155.94.155.181' in ipv4_pkt.src):
+                blockip_flag = False
+            else:
+                blockip_flag = True
 
             if msg.buffer_id != ofproto.OFP_NO_BUFFER:
                 self.add_flow(datapath, 1, match, actions, msg.buffer_id)
