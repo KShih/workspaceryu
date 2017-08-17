@@ -183,7 +183,10 @@ class SimpleSwitch13(app_manager.RyuApp):
 
             #check ip
             global blockip_flag
-            if ('120.113.200.113' in ipv4_pkt.src):
+
+            if ('210.69.154.247' in ipv4_pkt.src):
+                blockip_flag = True
+            elif ('117.56.12.178' in ipv4_pkt.src):
                 blockip_flag = True
             else:
                 blockip_flag = False
