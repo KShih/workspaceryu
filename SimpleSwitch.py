@@ -12,14 +12,12 @@
 # implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 # =============================================================================================
 #|| /\ \   /\  ___\           /\ \/ /    /\  ___\   /\ \_\ \   /\ \   /\ \_\ \   /\ \_\ \     ||
 #|| \ \ \  \ \ \__ \    []    \ \  _"-.  \ \___  \  \ \  __ \  \ \ \  \ \  __ \  \ \  __ \    ||
 #||  \ \_\  \ \_____\          \ \_\ \_\  \/\_____\  \ \_\ \_\  \ \_\  \ \_\ \_\  \ \_\ \_\   ||
 #||   \/_/   \/_____/    []     \/_/\/_/   \/_____/   \/_/\/_/   \/_/   \/_/\/_/   \/_/\/_/ " ||
-# =============================================================================================                                                                                          
-
+# =============================================================================================                             
 import time
 import subprocess,sys
 from ryu.base import app_manager
@@ -41,7 +39,7 @@ output_flag = [0 for n in range(0,60)]
 pktin_count = [0 for n in range(0,60)]
 count = 0
 close_flag = 0
-inst = ''
+#inst = ''
 blockip_flag = False
 
 class SimpleSwitch13(app_manager.RyuApp):
@@ -77,7 +75,8 @@ class SimpleSwitch13(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         global blockip_flag
-
+        
+       
         if blockip_flag == False:
             inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
         else:
@@ -188,22 +187,30 @@ class SimpleSwitch13(app_manager.RyuApp):
             # flow_mod & packet_out
 
             #check ip
-            global blockip_flag
-
-            #if ('120.113' in ipv4_pkt.src):
-            #    blockip_flag = False
-            #elif ('10.' in ipv4_pkt.src):
-            #    blockip_flag = False
-            if ('117.56.6.1' in ipv4_pkt.src):
-                blockip_flag = False
-            elif ('192.30.255' in ipv4_pkt.src):
-                blockip_flag = False
-            elif ('120.113.200' in ipv4_pkt.src):
-                blockip_flag = False
-            elif ('155.94.155.181' in ipv4_pkt.src):
-                blockip_flag = False
-            else:
-                blockip_flag = True
+#            global blockip_flag
+#
+#            if ('216' in ipv4_pkt.src): #TARGET
+#                blockip_flag = False
+#            elif ('120.113' in ipv4_pkt.src):
+#                blockip_flag = False
+#            elif ('64.' in ipv4_pkt.src):
+#                blockip_flag = False
+#            elif ('74.' in ipv4_pkt.src):
+#                blockip_flag = False
+#            elif ('172.' in ipv4_pkt.src):
+#                blockip_flag = False
+#            elif ('10.' in ipv4_pkt.src): #self ip
+#                blockip_flag = False
+#            elif ('8.8.8.8' in ipv4_pkt.src): #DNS
+#                blockip_flag = False
+#            elif ('168.95' in ipv4_pkt.src): #DNS
+#                blockip_flag = False
+#            elif ('163.28' in ipv4_pkt.src): #DNS
+#                blcokip_flag = False
+#            elif ('140.130' in ipv4_pkt.src): #NCYU DNS
+#                blockip_flag = False
+#            else:
+#                blockip_flag = True
 
             if msg.buffer_id != ofproto.OFP_NO_BUFFER:
                 self.add_flow(datapath, 1, match, actions, msg.buffer_id)
