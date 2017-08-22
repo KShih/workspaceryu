@@ -20,6 +20,7 @@
 # =============================================================================================                             
 import time
 import subprocess,sys
+import MySQLdb
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
@@ -39,8 +40,8 @@ output_flag = [0 for n in range(0,60)]
 pktin_count = [0 for n in range(0,60)]
 count = 0
 close_flag = 0
-#inst = ''
 blockip_flag = False
+
 
 class SimpleSwitch13(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -127,7 +128,20 @@ class SimpleSwitch13(app_manager.RyuApp):
         #print time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) 
         if (output_flag[a-1]==0 and a>0):
             if(a % 5 == 0 and close_flag == 1):
-                entropy()
+                entropydb = entropy()
+                
+                #update the entropy count to sql
+                
+                db = MySQLdb.connect("120.113.173.84","root","ji3ul42; vul3j;6","ProjectSDN")
+                cursor = db.cursor()
+                sql = "UPDATE SDN SET Entropy = %f " % float(entropydb)
+                try:
+                    cursor.execute(sql)
+                    db.commit()
+                except:
+                    db.rollback()
+                db.close()
+                #end of update to sql
                 f.close()
                 f = open('5SecPacketInLog.txt','w')
                 close_flag = 0

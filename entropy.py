@@ -52,7 +52,7 @@ def countEnt(ipTotal,d):
         entropy -= prob_list[i] * log(prob_list[i], 2 )
     print("entropy: ",entropy)
     ef.write('entropy :' + str(entropy) + '\n')
-    return entropy
+    return float(entropy)
 
 def cleard():
     global d
