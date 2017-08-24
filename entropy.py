@@ -10,6 +10,7 @@ ipTotal = 0.0 # the total number of each ip
 d = dict()
 ef = open('EntropyLog.txt','w')
 num_lines = sum(1 for line in open('5SecPacketInLog.txt'))
+output_entropy = 0.0
 #ipTotal = 0.0 # the total number of each ip
 # Split the ip address & turn into class 
 def getKey(f):
@@ -40,9 +41,10 @@ def countIP(num_lines):
 
 # Count the Entropy
 def countEnt(ipTotal,d):
+    global output_entropy
     prob = 0.1
-    count = 0.0
     entropy = 0.0
+    count = 0.0
     prob_list = []
     for i in range(0,len(d)):
         count = d.values()[i]
@@ -51,8 +53,9 @@ def countEnt(ipTotal,d):
     for i in range(0,len(d)):
         entropy -= prob_list[i] * log(prob_list[i], 2 )
     print("entropy: ",entropy)
+    output_entropy = entropy
     ef.write('entropy :' + str(entropy) + '\n')
-    return float(entropy)
+    return entropy
 
 def cleard():
     global d
@@ -78,3 +81,8 @@ def entropy():
     d = dict()
     num_lines = sum(1 for line in open('5SecPacketInLog.txt'))
 
+def get_entropy():
+    global output_entropy
+    return output_entropy
+
+entropy()

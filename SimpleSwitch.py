@@ -35,6 +35,7 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import udp
 from array import *
 from entropy import entropy
+from entropy import get_entropy
 
 output_flag = [0 for n in range(0,60)]
 pktin_count = [0 for n in range(0,60)]
@@ -128,13 +129,13 @@ class SimpleSwitch13(app_manager.RyuApp):
         #print time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) 
         if (output_flag[a-1]==0 and a>0):
             if(a % 5 == 0 and close_flag == 1):
-                entropydb = entropy()
-                
+                entropy()
+                entropydb = get_entropy()      
+
                 #update the entropy count to sql
-                
                 db = MySQLdb.connect("120.113.173.84","root","ji3ul42; vul3j;6","ProjectSDN")
                 cursor = db.cursor()
-                sql = "UPDATE SDN SET Entropy = %f " % float(entropydb)
+                sql = "UPDATE SDN SET Entropy = %f " % entropydb
                 try:
                     cursor.execute(sql)
                     db.commit()
