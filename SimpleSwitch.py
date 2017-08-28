@@ -18,7 +18,7 @@
 #||  \ \_\  \ \_____\          \ \_\ \_\  \/\_____\  \ \_\ \_\  \ \_\  \ \_\ \_\  \ \_\ \_\   ||
 #||   \/_/   \/_____/    []     \/_/\/_/   \/_____/   \/_/\/_/   \/_/   \/_/\/_/   \/_/\/_/ " ||
 # =============================================================================================                             
-import time
+import time,os
 import subprocess,sys
 import MySQLdb
 from ryu.base import app_manager
@@ -42,18 +42,23 @@ pktin_count = [0 for n in range(0,60)]
 count = 0
 close_flag = 0
 blockip_flag = False
-
+db_pass = ""
 
 class SimpleSwitch13(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
+        global db_pass
         super(SimpleSwitch13, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         fall = open('PacketInLog.txt','w')
         f = open('5SecPacketInLog.txt','w')
         f.close()
         fall.close()
+        filepath = os.path.abspath("/security.txt")
+        fs = open(filepath,'r')
+        db_pass = fs.read().splitlines()
+        fs.close()
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -122,26 +127,27 @@ class SimpleSwitch13(app_manager.RyuApp):
 
         f = open('5SecPacketInLog.txt','a')
 	fall = open('PacketInLog.txt','a')
-        #=============My Block Start====================#
+        #=============PacketInCount and Time Count====================#
         global close_flag
+        global db_pass
         a = int(time.strftime("%S", time.localtime()))
         pktin_count[a] += 1
-        #print time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) 
         if (output_flag[a-1]==0 and a>0):
             if(a % 5 == 0 and close_flag == 1):
                 entropy()
-                entropydb = get_entropy()      
+                entropyfordb = get_entropy()      
+                timefordb = "%s" % time.strftime("%Y%m%d%H%M%S",time.localtime())
 
                 #update the entropy count to sql
-                db = MySQLdb.connect("120.113.173.84","root","ji3ul42; vul3j;6","ProjectSDN")
+                db = MySQLdb.connect("120.113.173.84","root",db_pass[0],"ProjectSDN")
                 cursor = db.cursor()
-                sql = "UPDATE SDN SET Entropy = %f " % entropydb
+                sql = "INSERT INTO `SDN` (`time`,`Entropy`) VALUES ('%s','%f')" % (timefordb,entropyfordb)
                 try:
-                    cursor.execute(sql)
+                    cursor.execute(sql)  
                     db.commit()
                 except:
                     db.rollback()
-                db.close()
+                #db.close()
                 #end of update to sql
                 f.close()
                 f = open('5SecPacketInLog.txt','w')
@@ -171,6 +177,7 @@ class SimpleSwitch13(app_manager.RyuApp):
             for i in range(0,58):
                 pktin_count[i] = 0
                 output_flag[i] = 0
+        #=============PacketInCount and Time Count====================#
 
             #>>>>>>>>>>>>>>> I P <<<<<<<<<<<<<<#
         pkt = packet.Packet(msg.data)
@@ -202,30 +209,18 @@ class SimpleSwitch13(app_manager.RyuApp):
             # flow_mod & packet_out
 
             #check ip
-#            global blockip_flag
-#
-#            if ('216' in ipv4_pkt.src): #TARGET
-#                blockip_flag = False
-#            elif ('120.113' in ipv4_pkt.src):
-#                blockip_flag = False
-#            elif ('64.' in ipv4_pkt.src):
-#                blockip_flag = False
-#            elif ('74.' in ipv4_pkt.src):
-#                blockip_flag = False
-#            elif ('172.' in ipv4_pkt.src):
-#                blockip_flag = False
-#            elif ('10.' in ipv4_pkt.src): #self ip
-#                blockip_flag = False
-#            elif ('8.8.8.8' in ipv4_pkt.src): #DNS
-#                blockip_flag = False
-#            elif ('168.95' in ipv4_pkt.src): #DNS
-#                blockip_flag = False
-#            elif ('163.28' in ipv4_pkt.src): #DNS
-#                blcokip_flag = False
-#            elif ('140.130' in ipv4_pkt.src): #NCYU DNS
-#                blockip_flag = False
-#            else:
-#                blockip_flag = True
+            global blockip_flag
+            db = MySQLdb.connect("120.113.173.84","root",db_pass[0],"ProjectSDN")
+            cursor = db.cursor()
+            sql = "SELECT address FROM WhiteList"
+            cursor.execute(sql)
+            results = cursor.fetchall()
+            for row in results:
+                if (row[0] in ipv4_pkt.src):
+                    blockip_flag = True
+                else:
+                    blockip_flag = False
+
 
             if msg.buffer_id != ofproto.OFP_NO_BUFFER:
                 self.add_flow(datapath, 1, match, actions, msg.buffer_id)
