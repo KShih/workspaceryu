@@ -36,6 +36,7 @@ from ryu.lib.packet import udp
 from array import *
 from entropy import entropy
 from entropy import get_entropy
+from SqlPushDangerSrc import PushDangerSrc
 
 output_flag = [0 for n in range(0,60)]
 pktin_count = [0 for n in range(0,60)]
@@ -143,13 +144,14 @@ class SimpleSwitch13(app_manager.RyuApp):
                 cursor = db.cursor()
                 sql = "INSERT INTO `SDN` (`time`,`Entropy`) VALUES ('%s','%f')" % (timefordb,entropyfordb)
                 try:
-                    cursor.execute(sql)  
+                    cursor.execute(sql)   
                     db.commit()
                 except:
                     db.rollback()
-                #db.close()
                 #end of update to sql
                 f.close()
+                if (entropyfordb >= 5):
+                    PushDangerSrc()
                 f = open('5SecPacketInLog.txt','w')
                 close_flag = 0
 
@@ -217,10 +219,13 @@ class SimpleSwitch13(app_manager.RyuApp):
             results = cursor.fetchall()
             for row in results:
                 if (row[0] in ipv4_pkt.src):
-                    blockip_flag = True
-                else:
                     blockip_flag = False
-
+            sql = "SELECT address FROM BlackList"
+            cursor.execute(sql)
+            results = cursor.fetchall()
+            for row in results:
+                if (row[0] in ipv4_pkt.src):
+                    blockip_flag = True
 
             if msg.buffer_id != ofproto.OFP_NO_BUFFER:
                 self.add_flow(datapath, 1, match, actions, msg.buffer_id)
