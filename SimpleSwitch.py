@@ -34,32 +34,29 @@ from ryu.lib.packet import arp
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import udp
 from array import *
-from entropy import entropy
-from entropy import get_entropy
-from SqlPushDangerSrc import PushDangerSrc
+import entropy
+import SqlPushDangerSrc
+import connectDB
 
 output_flag = [0 for n in range(0,60)]
 pktin_count = [0 for n in range(0,60)]
 count = 0
 close_flag = 0
 blockip_flag = False
-db_pass = ""
+db = connectDB.myDB()
 
 class SimpleSwitch13(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        global db_pass
+        global db
         super(SimpleSwitch13, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         fall = open('PacketInLog.txt','w')
         f = open('5SecPacketInLog.txt','w')
         f.close()
         fall.close()
-        filepath = os.path.abspath("/security.txt")
-        fs = open(filepath,'r')
-        db_pass = fs.read().splitlines()
-        fs.close()
+        
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -101,6 +98,7 @@ class SimpleSwitch13(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
+        global db
         # If you hit this you might want to increase
         # the "miss_send_length" of your switch
         if ev.msg.msg_len < ev.msg.total_len:
@@ -130,28 +128,26 @@ class SimpleSwitch13(app_manager.RyuApp):
 	fall = open('PacketInLog.txt','a')
         #=============PacketInCount and Time Count====================#
         global close_flag
-        global db_pass
+        global cursor
         a = int(time.strftime("%S", time.localtime()))
         pktin_count[a] += 1
         if (output_flag[a-1]==0 and a>0):
             if(a % 5 == 0 and close_flag == 1):
-                entropy()
-                entropyfordb = get_entropy()      
+                entropy.entropy()
+                entropyfordb = entropy.get_entropy()      
                 timefordb = "%s" % time.strftime("%Y%m%d%H%M%S",time.localtime())
 
                 #update the entropy count to sql
-                db = MySQLdb.connect("120.113.173.84","root",db_pass[0],"ProjectSDN")
-                cursor = db.cursor()
                 sql = "INSERT INTO `SDN` (`time`,`Entropy`) VALUES ('%s','%f')" % (timefordb,entropyfordb)
                 try:
-                    cursor.execute(sql)   
-                    db.commit()
+                    db.cursor.execute(sql)   
+                    db.db.commit()
                 except:
-                    db.rollback()
+                    db.db.rollback()
                 #end of update to sql
                 f.close()
                 if (entropyfordb >= 5):
-                    PushDangerSrc()
+                    SqlPushDangerSrc.PushDangerSrc()
                 f = open('5SecPacketInLog.txt','w')
                 close_flag = 0
 
@@ -164,9 +160,11 @@ class SimpleSwitch13(app_manager.RyuApp):
             print pktin_count[a-1]
             print "**********"
             output_flag[a-1] = 1
+            
+
 
         if (output_flag[a-1]==0 and a==0):
-            entropy()
+            entropy.entropy()
             fall = open('PacketInLog.txt','a')
             print "**********"
             print "PacketIn Count : ",
@@ -212,17 +210,15 @@ class SimpleSwitch13(app_manager.RyuApp):
 
             #check ip
             global blockip_flag
-            db = MySQLdb.connect("120.113.173.84","root",db_pass[0],"ProjectSDN")
-            cursor = db.cursor()
             sql = "SELECT address FROM WhiteList"
-            cursor.execute(sql)
-            results = cursor.fetchall()
+            db.cursor.execute(sql)
+            results = db.cursor.fetchall()
             for row in results:
                 if (row[0] in ipv4_pkt.src):
                     blockip_flag = False
             sql = "SELECT address FROM BlackList"
-            cursor.execute(sql)
-            results = cursor.fetchall()
+            db.cursor.execute(sql)
+            results = db.cursor.fetchall()
             for row in results:
                 if (row[0] in ipv4_pkt.src):
                     blockip_flag = True
@@ -250,5 +246,4 @@ class SimpleSwitch13(app_manager.RyuApp):
         out = parser.OFPPacketOut(datapath=datapath , buffer_id = msg.buffer_id,
                                   in_port=in_port , actions=actions,data=data)
         datapath.send_msg(out)
-
 
