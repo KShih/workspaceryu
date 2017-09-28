@@ -21,6 +21,7 @@
 import time,os
 import subprocess,sys
 import MySQLdb
+import requests
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
@@ -34,7 +35,6 @@ from ryu.lib.packet import arp
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import udp
 from array import *
-import entropy
 import SqlPushDangerSrc
 import connectDB
 
@@ -43,19 +43,24 @@ pktin_count = [0 for n in range(0,60)]
 count = 0
 close_flag = 0
 blockip_flag = False
+attacked_flag = False
 db = connectDB.myDB()
+f = open('5SecPacketInLog.txt','w')
+f.truncate()
+import entropy
 
 class SimpleSwitch13(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
         global db
-        super(SimpleSwitch13, self).__init__(*args, **kwargs)
-        self.mac_to_port = {}
         fall = open('PacketInLog.txt','w')
         f = open('5SecPacketInLog.txt','w')
+        f.truncate()
         f.close()
         fall.close()
+        super(SimpleSwitch13, self).__init__(*args, **kwargs)
+        self.mac_to_port = {}
         
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -89,7 +94,7 @@ class SimpleSwitch13(app_manager.RyuApp):
 
         if buffer_id:
             mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
-                                     priority=priority, match=match,
+                                      priority=priority, match=match,
                                     instructions=inst)
         else:
             mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
@@ -129,6 +134,7 @@ class SimpleSwitch13(app_manager.RyuApp):
         #=============PacketInCount and Time Count====================#
         global close_flag
         global cursor
+        global attacked_flag
         a = int(time.strftime("%S", time.localtime()))
         pktin_count[a] += 1
         if (output_flag[a-1]==0 and a>0):
@@ -146,8 +152,24 @@ class SimpleSwitch13(app_manager.RyuApp):
                     db.db.rollback()
                 #end of update to sql
                 f.close()
+                
+                # delete all flow entry & re-add default entry if entropy larger than 5
                 if (entropyfordb >= 5):
-                    SqlPushDangerSrc.PushDangerSrc()
+                    attacked_flag = True 
+                    requests.get("http://localhost:8080/stats/flow/2")
+                    delete_all_entry = requests.delete("http://localhost:8080/stats/flowentry/clear/2")
+                     
+                    # re-add default flow entry
+                    match = parser.OFPMatch()
+                    actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                                    ofproto.OFPCML_NO_BUFFER)]
+                    inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
+                    mod = parser.OFPFlowMod(datapath=datapath, priority=0,
+                                    match=match, instructions=inst)
+                    datapath.send_msg(mod)
+
+                    requests.get("http://localhost:8080/stats/flow/2") 
+                    #SqlPushDangerSrc.PushDangerSrc()
                 f = open('5SecPacketInLog.txt','w')
                 close_flag = 0
 
@@ -159,6 +181,14 @@ class SimpleSwitch13(app_manager.RyuApp):
             print "PacketIn Count : ",
             print pktin_count[a-1]
             print "**********"
+            timefordb = "%s" % time.strftime("%Y%m%d%H%M%S",time.localtime())
+            #update the Packet-in count to db
+            sql = "INSERT INTO `PacketIn` (`time`,`PacketIn`) VALUES ('%s','%d')" % (timefordb,pktin_count[a-1])
+            try:
+                db.cursor.execute(sql)   
+                db.db.commit()
+            except:
+                db.db.rollback() 
             output_flag[a-1] = 1
             
 
@@ -170,6 +200,15 @@ class SimpleSwitch13(app_manager.RyuApp):
             print "PacketIn Count : ",
             print pktin_count[59]
             print "**********"
+
+            timefordb = "%s" % time.strftime("%Y%m%d%H%M%S",time.localtime())
+            #update the Packet-in count to db
+            sql = "INSERT INTO `PacketIn` (`time`,`PacketIn`) VALUES ('%s','%d')" % (timefordb,pktin_count[59])
+            try:
+                db.cursor.execute(sql)   
+                db.db.commit()
+            except:
+                db.db.rollback() 
             output_flag[59] = 1
             pktin_count[59] = 0
 
@@ -210,18 +249,29 @@ class SimpleSwitch13(app_manager.RyuApp):
 
             #check ip
             global blockip_flag
+
+            #default
+            if (attacked_flag == True):
+                blockip_flag = True
+            elif (attacked_flag == False):
+                blockip_flag = False
+
             sql = "SELECT address FROM WhiteList"
             db.cursor.execute(sql)
             results = db.cursor.fetchall()
-            for row in results:
-                if (row[0] in ipv4_pkt.src):
+            for white_row in results:
+                if (white_row[0] in ipv4_pkt.src):
                     blockip_flag = False
             sql = "SELECT address FROM BlackList"
             db.cursor.execute(sql)
             results = db.cursor.fetchall()
-            for row in results:
-                if (row[0] in ipv4_pkt.src):
+            for black_row in results:
+                if (black_row[0] in ipv4_pkt.src):
                     blockip_flag = True
+            
+            #TEST
+            if (ipv4_pkt.src == "120.113.200.113"):
+                blockip_flag = False
 
             if msg.buffer_id != ofproto.OFP_NO_BUFFER:
                 self.add_flow(datapath, 1, match, actions, msg.buffer_id)
