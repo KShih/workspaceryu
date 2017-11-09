@@ -48,6 +48,9 @@ db = connectDB.myDB()
 f = open('5SecPacketInLog.txt','w')
 f.truncate()
 import entropy
+dns_server = ["" for x in range(30)]
+dns_server = ['140.130.81.11','140.130.41.11','168.95.1.1','168.95.192.1','168.95.192.2','8.8.8.8','8.8.4.4'] 
+
 
 class SimpleSwitch13(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -139,7 +142,8 @@ class SimpleSwitch13(app_manager.RyuApp):
         pktin_count[a] += 1
         if (output_flag[a-1]==0 and a>0):
             if(a % 5 == 0 and close_flag == 1):
-                entropy.entropy()
+                if(attacked_flag == False):
+                    entropy.entropy()
                 entropyfordb = entropy.get_entropy()      
                 timefordb = "%s" % time.strftime("%Y%m%d%H%M%S",time.localtime())
 
@@ -154,22 +158,36 @@ class SimpleSwitch13(app_manager.RyuApp):
                 f.close()
                 
                 # delete all flow entry & re-add default entry if entropy larger than 5
-                if (entropyfordb >= 5):
-                    attacked_flag = True 
-                    requests.get("http://localhost:8080/stats/flow/2")
-                    delete_all_entry = requests.delete("http://localhost:8080/stats/flowentry/clear/2")
-                     
+                if (attacked_flag == False and entropyfordb >= 5):
                     # re-add default flow entry
                     match = parser.OFPMatch()
-                    actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                                    ofproto.OFPCML_NO_BUFFER)]
+                    actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER, ofproto.OFPCML_NO_BUFFER)]
                     inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
                     mod = parser.OFPFlowMod(datapath=datapath, priority=0,
                                     match=match, instructions=inst)
-                    datapath.send_msg(mod)
 
-                    requests.get("http://localhost:8080/stats/flow/2") 
-                    #SqlPushDangerSrc.PushDangerSrc()
+                    attacked_flag = True 
+                    #requests.get("http://localhost:8080/stats/flow/2")
+                    #requests.delete("http://localhost:8080/stats/flowentry/clear/2")
+                    rule = {
+                            "dpid": 2,
+                            "priority": 1,
+                            "match":{
+                                    "in_port":1,
+                                    },
+                            "actions":[
+                                    {
+                                    "type":"OUTPUT",
+                                    "port":"FLOOD"
+                                    }      
+                                    ]
+                            }
+                    requests.post("http://localhost:8080/stats/flowentry/delete",json = rule)
+        
+                    #datapath.send_msg(mod)
+                    
+                    #requests.get("http://localhost:8080/stats/flow/2") 
+                    SqlPushDangerSrc.PushDangerSrc()
                 f = open('5SecPacketInLog.txt','w')
                 close_flag = 0
 
@@ -194,7 +212,8 @@ class SimpleSwitch13(app_manager.RyuApp):
 
 
         if (output_flag[a-1]==0 and a==0):
-            entropy.entropy()
+            if(attacked_flag == False):
+                entropy.entropy()
             fall = open('PacketInLog.txt','a')
             print "**********"
             print "PacketIn Count : ",
@@ -262,6 +281,12 @@ class SimpleSwitch13(app_manager.RyuApp):
             for white_row in results:
                 if (white_row[0] in ipv4_pkt.src):
                     blockip_flag = False
+
+            #hardcode DNS Server ip which is necessary.
+            for x in range (0,6):
+                if (ipv4_pkt.src in dns_server[x]):
+                    blockip_flag = False
+
             sql = "SELECT address FROM BlackList"
             db.cursor.execute(sql)
             results = db.cursor.fetchall()
@@ -269,7 +294,7 @@ class SimpleSwitch13(app_manager.RyuApp):
                 if (black_row[0] in ipv4_pkt.src):
                     blockip_flag = True
             
-            #TEST
+            #TEST Target 
             if (ipv4_pkt.src == "120.113.200.113"):
                 blockip_flag = False
 
