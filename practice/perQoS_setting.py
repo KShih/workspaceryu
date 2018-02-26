@@ -19,7 +19,7 @@ rule = {
 # curl -X POST -d '{"match": {"nw_dst": "10.0.0.1", "nw_proto": "UDP", "tp_dst": "5002"}, "actions":{"queue": "1"}}' http://localhost:8080/qos/rules/0000000000000001
 
 set_ovsdb_addr = requests.put("http://localhost:8080/v1.0/conf/switches/0000000000000001/ovsdb_addr",data= switch)
-set_qos_rate = requests.post("http://localhost:8080/qos/queue/0000000000000001",json= rate) # Can't Use json type in POST
+set_qos_rate = requests.post("http://localhost:8080/qos/queue/0000000000000001",json= rate) # Can't Use data type in POST
 set_rule = requests.post("http://localhost:8080/qos/rules/0000000000000001", json= rule)
 get_rule = requests.get("http://localhost:8080/qos/rules/0000000000000001")
 

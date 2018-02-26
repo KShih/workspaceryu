@@ -62,6 +62,11 @@ class SimpleSwitch13(app_manager.RyuApp):
         f.truncate()
         f.close()
         fall.close()
+
+        timefordb = "%s" % time.strftime("%Y%m%d%H%M%S",time.localtime()) 
+        sql = "INSERT INTO `sysStatus` (`time`,`status`) VALUES ('%s','%d')" % (timefordb,0)
+        db.cursor.execute(sql)
+        db.db.commit() 
         super(SimpleSwitch13, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         
@@ -167,6 +172,10 @@ class SimpleSwitch13(app_manager.RyuApp):
                                     match=match, instructions=inst)
 
                     attacked_flag = True 
+                    sql = "INSERT INTO `sysStatus` (`time`,`status`) VALUES ('%s','%d')" % (timefordb,1)
+                    db.cursor.execute(sql)
+                    db.db.commit()
+
                     #requests.get("http://localhost:8080/stats/flow/2")
                     #requests.delete("http://localhost:8080/stats/flowentry/clear/2")
                     rule = {
@@ -187,7 +196,7 @@ class SimpleSwitch13(app_manager.RyuApp):
                     #datapath.send_msg(mod)
                     
                     #requests.get("http://localhost:8080/stats/flow/2") 
-                    SqlPushDangerSrc.PushDangerSrc()
+                    #SqlPushDangerSrc.PushDangerSrc()
                 f = open('5SecPacketInLog.txt','w')
                 close_flag = 0
 
@@ -317,8 +326,9 @@ class SimpleSwitch13(app_manager.RyuApp):
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
             data = msg.data
-
+        
+         
         out = parser.OFPPacketOut(datapath=datapath , buffer_id = msg.buffer_id,
                                   in_port=in_port , actions=actions,data=data)
         datapath.send_msg(out)
-
+        
